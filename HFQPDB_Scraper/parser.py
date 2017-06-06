@@ -1,17 +1,17 @@
 import io
 from io import BytesIO
-
 import sqlalchemy
 from bs4 import BeautifulSoup
 import pandas as pd
-import pandas.io.sql as pd_sql
 import urllib
 import requests
-from sqlalchemy import create_engine, MetaData
-from sqlalchemy.sql import select
 from PIL import Image
+import Configuration
 
 engine = sqlalchemy.create_engine('sqlite:///hfqpdb.sqlite')
+engine = sqlalchemy.create_engine('mysql+mysqldb://{username}:{password}@{hostname}/{database}'.format(
+    username=Configuration.get('mysql', 'username'), password=Configuration.get('mysql', 'password'), hostname=Configuration.get('mysql', 'hostname'), database=Configuration.get('mysql', 'database')
+))
 
 lot_no_split = 'Lot No.'
 
@@ -21,6 +21,7 @@ CURRENT_PRODUCT_LINK = 2
 
 PRODUCT_COUPON = 0
 FREEBIE_COUPON = 1
+PERCENT_OFF_COUPON = 2
 
 
 class Coupon:
@@ -31,10 +32,11 @@ class Coupon:
     valid_to = ""
     price = ""
     image_url = ""
+    thumbnail_url = ""
 
     base_image_url = "www.hfqpdb.com"
 
-    def __init__(self, href="", title="", lot_nos=[], valid_from="", valid_to="", price="", image_url=""):
+    def __init__(self, href="", title="", lot_nos=[], valid_from="", valid_to="", price="", image_url="", thumbnail_url="" ):
         self.href = href
         self.title = title
         self.lot_nos = lot_nos
@@ -42,6 +44,7 @@ class Coupon:
         self.valid_to = valid_to
         self.price = price
         self.image_url = image_url
+        self.thumbnail_url = thumbnail_url
 
     def to_string(self):
         return "{title} - {lot_nos}\n\t{valid_from} - {valid_to}\n".format(title=self.title, lot_nos="/".join(self.lot_nos), valid_from=self.valid_from, valid_to=self.valid_to)
@@ -75,6 +78,8 @@ def test():
 
 
 def download_images(row):
+    if not Configuration.getboolean('testing', 'should_download_images'):
+        return ""
     print(row['image_url'])
     response = requests.get(row['image_url'])
     image = Image.open(BytesIO(response.content))
@@ -133,6 +138,8 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
                         coupon.title = coupon.title.split(lot_no_split)[0].title()
                     elif coupon_type == FREEBIE_COUPON:
                         coupon.title = coupon.title.split(lot_no_split)[0].split("Harbor Freight Free Coupon")[1].title()
+                    else:
+                        coupon.title = coupon.title.split(lot_no_split)[0].title()
                     coupon_list.append(coupon)
                 except Exception as ex:
                     print("Could not add coupon: {ex}".format(ex=ex))
@@ -160,7 +167,12 @@ def parse(hfqpdb_html):
     fc_list = parse_coupons(product_coupons=free_coupons, coupon_type=FREEBIE_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in fc_list])
     hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
-
     hfqpdb_df.to_sql('freebies', engine, if_exists='replace')
+
+    percent_off_coupons = soup.find("div", {"id": "percent_off"})
+    pco_list = parse_coupons(product_coupons=percent_off_coupons, coupon_type=PERCENT_OFF_COUPON)
+    hfqpdb_df = pd.DataFrame([x.to_dict() for x in pco_list])
+    hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
+    hfqpdb_df.to_sql('percent_off', engine, if_exists='replace')
 
     # test()

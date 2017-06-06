@@ -1,0 +1,9 @@
+[testing]
+testing = True
+should_download_images = False
+
+[mysql]
+username = username
+password = password
+database = database
+hostname = hostname

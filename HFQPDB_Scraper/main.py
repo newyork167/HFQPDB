@@ -1,12 +1,15 @@
 import parser as p
+import Configuration
+import urllib
 
-TESTING = True
+TESTING = Configuration.getboolean('testing', 'testing')
 
 if __name__ == '__main__':
-    if TESTING:
-        with open("hfqpdb_test.html", 'r') as myfile:
-            hfqpdb_html = myfile.read()
+    if not TESTING:
+        urllib.urlretrieve('http://www.hfqpdb.com', filename="hfqpdb.html")
+        filename = "hfqpdb.html"
     else:
-        # TODO: Get from hfqpdb.com
-        hfqpdb_html = ""
+        filename = "hfqpdb_test.html"
+    with open(filename, 'r') as myfile:
+        hfqpdb_html = myfile.read()
     p.parse(hfqpdb_html=hfqpdb_html)
