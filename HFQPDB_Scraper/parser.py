@@ -53,8 +53,9 @@ class Coupon:
         return "http://{base_url}{image_url}".format(base_url=self.base_image_url, image_url=self.image_url)
 
     def to_dict(self):
-        return {'href': self.href, 'title': self.title, 'lot_nos': "/".join(self.lot_nos), 'valid_from': self.valid_from,
-                'valid_to': self.valid_to, 'price': self.price, 'image_url': self.get_image_url()}
+        d = self.__dict__
+        d['lot_nos'] = "/".join(self.lot_nos)
+        return d
 
 
 def test():
@@ -131,7 +132,7 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
                         lot_nos = [x.strip() for x in lot_nos]
                         coupon.lot_nos = lot_nos
 
-                    coupon.price = price
+                    coupon.price = price.replace("$", "")
                     coupon.valid_to = valid_to
                     coupon.valid_from = valid_from
                     if coupon_type == PRODUCT_COUPON:
