@@ -153,7 +153,7 @@ def parse(hfqpdb_html):
     product_coupons = soup.find("div", {"id": "products"})
     pc_list = parse_coupons(product_coupons=product_coupons, coupon_type=PRODUCT_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in pc_list])
-    # hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
+    hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
     hfqpdb_df.to_sql('products', engine, if_exists='replace')
 
     free_coupons = soup.find("div", {"id": "free"})
