@@ -1,6 +1,7 @@
 [testing]
 testing = True
 should_download_images = False
+max_images_to_download = 5
 
 [mysql]
 username = username

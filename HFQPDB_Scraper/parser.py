@@ -81,9 +81,15 @@ def test():
     con.close()
 
 
+count = 0
 def download_images(row):
+    global count
     if not Configuration.getboolean('testing', 'should_download_images'):
         return ""
+    if Configuration.getboolean('testing', 'testing'):
+        if count > Configuration.getint('testing', 'max_images_to_download'):
+            return ""
+        count += 1
     print(row['image_url'])
     response = requests.get(row['image_url'])
     image = Image.open(BytesIO(response.content))
