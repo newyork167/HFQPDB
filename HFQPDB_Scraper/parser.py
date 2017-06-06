@@ -176,13 +176,13 @@ def parse(hfqpdb_html):
     free_coupons = soup.find("div", {"id": "free"})
     fc_list = parse_coupons(product_coupons=free_coupons, coupon_type=FREEBIE_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in fc_list])
-    hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
+    # hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
     hfqpdb_df.to_sql('freebies', engine, if_exists='replace')
 
     percent_off_coupons = soup.find("div", {"id": "percent_off"})
     pco_list = parse_coupons(product_coupons=percent_off_coupons, coupon_type=PERCENT_OFF_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in pco_list])
-    hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
+    # hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
     hfqpdb_df.to_sql('percent_off', engine, if_exists='replace')
 
     # test()
