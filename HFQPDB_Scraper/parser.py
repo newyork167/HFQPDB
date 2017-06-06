@@ -55,7 +55,10 @@ class Coupon:
     def to_dict(self):
         d = self.__dict__
         d['lot_nos'] = "/".join(self.lot_nos)
+        d['image_url'] = self.get_image_url()
         return d
+        return {'href': self.href, 'title': self.title, 'lot_nos': "/".join(self.lot_nos), 'valid_from': self.valid_from,
+                'valid_to': self.valid_to, 'price': self.price, 'image_url': self.get_image_url()}
 
 
 def test():
