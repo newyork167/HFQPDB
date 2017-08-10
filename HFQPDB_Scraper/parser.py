@@ -30,13 +30,13 @@ class Coupon:
     lot_nos = []
     valid_from = ""
     valid_to = ""
-    price = ""
+    price = 0.00
     image_url = ""
     thumbnail_url = ""
 
     base_image_url = "www.hfqpdb.com"
 
-    def __init__(self, href="", title="", lot_nos=[], valid_from="", valid_to="", price="", image_url="", thumbnail_url="" ):
+    def __init__(self, href="", title="", lot_nos=[], valid_from="", valid_to="", price=0.00, image_url="", thumbnail_url="" ):
         self.href = href
         self.title = title
         self.lot_nos = lot_nos
@@ -141,15 +141,17 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
                         lot_nos = [x.strip() for x in lot_nos]
                         coupon.lot_nos = lot_nos
 
-                    coupon.price = price.replace("$", "")
                     coupon.valid_to = valid_to
                     coupon.valid_from = valid_from
                     if coupon_type == PRODUCT_COUPON:
+                        coupon.price = float(price.replace("$", ""))
                         coupon.title = coupon.title.split(lot_no_split)[0].title()
                     elif coupon_type == FREEBIE_COUPON:
                         coupon.title = coupon.title.split(lot_no_split)[0].split("Harbor Freight Free Coupon")[1].title()
+                        coupon.price = price.replace("$", "")
                     else:
                         coupon.title = coupon.title.split(lot_no_split)[0].title()
+                        coupon.price = price.replace("$", "")
                     coupon_list.append(coupon)
                 except Exception as ex:
                     print("Could not add coupon: {ex}".format(ex=ex))
@@ -170,7 +172,7 @@ def parse(hfqpdb_html):
     product_coupons = soup.find("div", {"id": "products"})
     pc_list = parse_coupons(product_coupons=product_coupons, coupon_type=PRODUCT_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in pc_list])
-    hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
+    # hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
     hfqpdb_df.to_sql('products', engine, if_exists='replace')
 
     free_coupons = soup.find("div", {"id": "free"})
