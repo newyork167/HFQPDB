@@ -10,7 +10,8 @@ import Configuration
 
 engine = sqlalchemy.create_engine('sqlite:///hfqpdb.sqlite')
 engine = sqlalchemy.create_engine('mysql+mysqldb://{username}:{password}@{hostname}/{database}'.format(
-    username=Configuration.get('mysql', 'username'), password=Configuration.get('mysql', 'password'), hostname=Configuration.get('mysql', 'hostname'), database=Configuration.get('mysql', 'database')
+    username=Configuration.get('mysql', 'username'), password=Configuration.get('mysql', 'password'),
+    hostname=Configuration.get('mysql', 'hostname'), database=Configuration.get('mysql', 'database')
 ))
 
 lot_no_split = 'Lot No.'
@@ -36,7 +37,8 @@ class Coupon:
 
     base_image_url = "www.hfqpdb.com"
 
-    def __init__(self, href="", title="", lot_nos=[], valid_from="", valid_to="", price=0.00, image_url="", thumbnail_url="" ):
+    def __init__(self, href="", title="", lot_nos=[], valid_from="", valid_to="", price=0.00, image_url="",
+                 thumbnail_url=""):
         self.href = href
         self.title = title
         self.lot_nos = lot_nos
@@ -47,7 +49,10 @@ class Coupon:
         self.thumbnail_url = thumbnail_url
 
     def to_string(self):
-        return "{title} - {lot_nos}\n\t{valid_from} - {valid_to}\n".format(title=self.title, lot_nos="/".join(self.lot_nos), valid_from=self.valid_from, valid_to=self.valid_to)
+        return "{title} - {lot_nos}\n\t{valid_from} - {valid_to}\n".format(title=self.title,
+                                                                           lot_nos="/".join(self.lot_nos),
+                                                                           valid_from=self.valid_from,
+                                                                           valid_to=self.valid_to)
 
     def get_image_url(self):
         return "http://{base_url}{image_url}".format(base_url=self.base_image_url, image_url=self.image_url)
@@ -57,8 +62,9 @@ class Coupon:
         d['lot_nos'] = "/".join(self.lot_nos)
         d['image_url'] = self.get_image_url()
         return d
-        return {'href': self.href, 'title': self.title, 'lot_nos': "/".join(self.lot_nos), 'valid_from': self.valid_from,
-                'valid_to': self.valid_to, 'price': self.price, 'image_url': self.get_image_url()}
+        # return {'href': self.href, 'title': self.title, 'lot_nos': "/".join(self.lot_nos),
+        #         'valid_from': self.valid_from,
+        #         'valid_to': self.valid_to, 'price': self.price, 'image_url': self.get_image_url()}
 
 
 def test():
@@ -82,6 +88,8 @@ def test():
 
 
 count = 0
+
+
 def download_images(row):
     global count
     if not Configuration.getboolean('testing', 'should_download_images'):
@@ -115,8 +123,13 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
         # <a href="/best_coupon/wireless+surveillance+system+4+channel+with+2+cameras">view all (1)</a>
         # <a href="http://www.harborfreight.com/4-channel-wireless-surveillance-system-with-2-cameras-62368.html" target="_blank">current price ($259.99)</a>
         link_count = 0
+
+        # Loop through all links in the html
         for link in tag.findAll('a'):
             coupon = Coupon()
+
+            # The links are determined as a link count due to the author of the page changing the link order
+            # and not having any specific attributes to denote what kind of coupon it is
             if link_count == COUPON_LINK:
                 try:
                     print(link)
@@ -128,7 +141,9 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
                     valid_from = ""
                     price = coupon.title.split('-')[-1]
 
+                    # Check if the title contains the lot-no-split string, again due to differences in code throughout the lifespan of the page
                     if lot_no_split in coupon.title:
+                        # Check for different valid tags
                         if 'valid thru' in coupon.title.lower():
                             valid_to = coupon.title.split('Valid Thru:')[-1].split('-')[0].strip()
                             lot_nos = coupon.title.split(lot_no_split)[-1].split('Valid Thru:')[0].split('/')
@@ -141,13 +156,17 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
                         lot_nos = [x.strip() for x in lot_nos]
                         coupon.lot_nos = lot_nos
 
+                    # Set the coupons valid dates based on the above code
                     coupon.valid_to = valid_to
                     coupon.valid_from = valid_from
+
+                    # Handle getting the price of the coupon based on different title formats
                     if coupon_type == PRODUCT_COUPON:
                         coupon.price = float(price.replace("$", ""))
                         coupon.title = coupon.title.split(lot_no_split)[0].title()
                     elif coupon_type == FREEBIE_COUPON:
-                        coupon.title = coupon.title.split(lot_no_split)[0].split("Harbor Freight Free Coupon")[1].title()
+                        coupon.title = coupon.title.split(lot_no_split)[0].split("Harbor Freight Free Coupon")[
+                            1].title()
                         coupon.price = price.replace("$", "")
                     else:
                         coupon.title = coupon.title.split(lot_no_split)[0].title()
@@ -168,19 +187,24 @@ def parse_coupons(product_coupons, coupon_type=PRODUCT_COUPON):
 
 
 def parse(hfqpdb_html):
+    # Get the soup version of the html file
     soup = BeautifulSoup(hfqpdb_html, "lxml")
+
+    # Get the product coupons
     product_coupons = soup.find("div", {"id": "products"})
     pc_list = parse_coupons(product_coupons=product_coupons, coupon_type=PRODUCT_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in pc_list])
     # hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
     hfqpdb_df.to_sql('products', engine, if_exists='replace')
 
+    # Get the freebie coupons
     free_coupons = soup.find("div", {"id": "free"})
     fc_list = parse_coupons(product_coupons=free_coupons, coupon_type=FREEBIE_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in fc_list])
     # hfqpdb_df['image'] = hfqpdb_df.apply(lambda row: download_images(row=row), axis=1)
     hfqpdb_df.to_sql('freebies', engine, if_exists='replace')
 
+    # Get the percent off coupons
     percent_off_coupons = soup.find("div", {"id": "percent_off"})
     pco_list = parse_coupons(product_coupons=percent_off_coupons, coupon_type=PERCENT_OFF_COUPON)
     hfqpdb_df = pd.DataFrame([x.to_dict() for x in pco_list])
